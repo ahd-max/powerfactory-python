@@ -1,0 +1,139 @@
+import os
+import sys
+sys.path.append(r'D:\PowerFactory2017\Python\3.5')
+import powerfactory as pf
+app=pf.GetApplication()
+app.ClearOutputWindow()
+user=app.GetCurrentUser()
+
+##option model,study case
+projName='39 Bus New England System'
+#study_case='Power Flow.IntCase'
+study_case='Simulation Fault Bus 16 Stable.IntCase'
+project = app.ActivateProject(projName)
+proj = app.GetActiveProject()
+Folder_studycase = app.GetProjectFolder('study')
+app.PrintPlain(Folder_studycase)
+##
+Case = Folder_studycase.GetContents(study_case)
+app.PrintPlain(Case)
+
+
+
+#oCase.Activate()
+Init = app.GetFromStudyCase('ComInc')
+Init.Execute()
+Rms = app.GetFromStudyCase('ComSim')
+Rms.Execute()
+
+##
+import numpy as np
+import pandas as pd
+
+def getResults():    
+    #get result file
+    elmRes = app.GetFromStudyCase('*.ElmRes')    
+    app.ResLoadData(elmRes)
+    app.PrintPlain(elmRes)
+  
+    #Get number of rows and columns
+    NrRow = app.ResGetValueCount(elmRes,0)
+    app.PrintPlain(NrRow)
+     
+    #get objects of interest
+    oSG1 = app.GetCalcRelevantObjects('G 01.ElmSym')[0]
+    oBus1 = app.GetCalcRelevantObjects('Bus 01.ElmTerm')[0]
+    app.PrintPlain(oBus1)
+    oLine4_5 = app.GetCalcRelevantObjects('Line 04 - 05.ElmLne')[0]
+    app.PrintPlain(oLine4_5)
+    lines = app.GetCalcRelevantObjects("*.ElmLne")
+    #app.PrintPlain(lines)
+
+    #Get index of variable of interest
+    ColIndex_time = app.ResGetIndex(elmRes,elmRes,'b:tnow')
+    ColIndex_ut = app.ResGetIndex(elmRes,oSG1,'s:ut')
+    ColIndex_P = app.ResGetIndex(elmRes,oSG1,'s:P1')
+    ColIndex_Q = app.ResGetIndex(elmRes,oSG1,'s:Q1')
+    ColIndex_speed = app.ResGetIndex(elmRes,oSG1,'s:xspeed')
+    ColIndex_u_bus1 = app.ResGetIndex(elmRes,oBus1,'m:u')
+    ColIndex_loading_line_4_5 = app.ResGetIndex(elmRes,oLine4_5,'m:loading')
+    
+    #pre-allocate result variables
+    result_time = np.zeros((NrRow,))
+    result_ut = np.zeros((NrRow))
+    result_P = np.zeros((NrRow))
+    result_Q = np.zeros((NrRow))    
+    result_speed = np.zeros((NrRow))    
+    result_u_bus1 = np.zeros((NrRow))    
+    result_loading_line_4_5 = np.zeros((NrRow))    
+    
+    #get results for each time step
+    for i in range(NrRow):    
+        result_time[i] = app.ResGetData(elmRes,i,ColIndex_time)[1]
+        result_ut[i] = app.ResGetData(elmRes,i,ColIndex_ut)[1]
+        result_P[i] = app.ResGetData(elmRes,i,ColIndex_P)[1]
+        result_Q[i] = app.ResGetData(elmRes,i,ColIndex_Q)[1]       
+        result_speed[i] = app.ResGetData(elmRes,i,ColIndex_speed)[1]       
+        result_u_bus1[i] = app.ResGetData(elmRes,i,ColIndex_u_bus1)[1]       
+        result_loading_line_4_5[i] = app.ResGetData(elmRes,i,ColIndex_loading_line_4_5)[1]       
+    
+    results = pd.DataFrame()
+    results['time'] = result_time
+    results['P'] = result_P
+    results['Q'] = result_Q
+    results['ut'] = result_ut
+    results['speed'] = result_speed
+    results['u_bus1'] = result_u_bus1
+    results['loading_line_4_5'] = result_loading_line_4_5
+    return results
+
+#query results
+RES = getResults()
+#app.PrintPlain(RES)
+Data=pd.DataFrame(RES)
+app.PrintPlain(list(Data))
+
+##save data
+import openpyxl as xl
+from openpyxl.chart import LineChart, Reference
+  
+wb = xl.Workbook()
+sheet = wb.active
+sheet.title = 'PowerFlowData'
+
+sheet['A1'] = 'time'
+sheet['B1'] = 'P'
+sheet['C1'] = 'Q'
+sheet['D1'] = 'ut'
+sheet['E1'] = 'speed'
+sheet['F1'] = 'u_bus1'
+sheet['G1'] = 'loading_line_4_5'
+
+i = 0
+
+for bus in buses:
+  i += 1
+  app.PrintPlain("bus %s" % (bus))
+  Name = bus.GetAttribute("loc_name")
+  V = bus.GetAttribute("m:u")
+  Angle = bus.GetAttribute("m:phiu")
+  P = bus.GetAttribute("m:Pflow")
+  Q = bus.GetAttribute("m:Qflow")
+  #print to terminal
+  app.PrintPlain("V at terminal %s is %f p.u." % (bus, V))
+  app.PrintPlain("Angle at terminal %s is %f p.u." % (bus, Angle))
+  app.PrintPlain("Pgen at terminal %s is %f p.u." % (bus, P))
+  app.PrintPlain("Qgen at terminal %s is %f p.u." % (bus, Q))
+  #write to excel file
+  sheet.cell(row = 1+i, column = 1).value = i
+  sheet.cell(row = 1+i, column = 2).value = Name
+  sheet.cell(row = 1+i, column = 3).value = V
+  sheet.cell(row = 1+i, column = 4).value = Angle
+  sheet.cell(row = 1+i, column = 5).value = P
+  sheet.cell(row = 1+i, column = 6).value = Q
+    
+#save the excel file
+wb.save('C:\\Users\\ASUS\\Desktop\\%s.xlsx' % (filename))
+
+
+
