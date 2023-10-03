@@ -1,0 +1,44 @@
+import sys
+sys.path.append(r'D:\PowerFactory2017\Python\3.5')
+
+import powerfactory as pf
+app = pf.GetApplication()
+app.ClearOutputWindow()
+
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+###add the fault event/clear the event
+def addShcEvent(obj, sec, faultType):
+  faultFolder = app.GetFromStudyCase("Simulation Events/Fault.IntEvt")
+  event = faultFolder.CreateObject("EvtShc", obj.loc_name)
+  event.p_target = obj
+  event.time = sec
+  event.i_shc = faultType
+
+lines = app.GetCalcRelevantObjects("*.ElmLne")
+elmRes = app.GetFromStudyCase('*.ElmRes')
+app.ResLoadData(elmRes)
+
+
+random_element = random.choice(lines)
+line_na=random_element
+loc_fl=None
+for line in lines:
+    #app.PrintPlain(line)
+    if line == line_na:
+    #########def the line location short-circuit locatic%
+      line.SetAttribute('e:fshcloc', 25)
+      app.PrintPlain(line)
+      loc_fl= line
+      break
+      
+addShcEvent(loc_fl, 0.1, 0)
+event=app.GetCalcRelevantObjects("*.EvtShc")
+app.PrintPlain(event)
+
+addShcEvent(loc_fl, 0.3, 4) 
+app.PrintPlain(loc_fl)
+
