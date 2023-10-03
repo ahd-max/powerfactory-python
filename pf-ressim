@@ -3,137 +3,214 @@ import sys
 sys.path.append(r'D:\PowerFactory2017\Python\3.5')
 import powerfactory as pf
 app=pf.GetApplication()
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+
 app.ClearOutputWindow()
 user=app.GetCurrentUser()
 
+
+###set the basic simulation##
+def setupSimultation(comInc, comSim, start_time, stop_time, period):
+  comInc.iopt_sim = "rms"
+  comInc.iopt_show = 0
+  comInc.iopt_adapt = 0
+  comInc.start = start_time
+  comSim.tstop = stop_time
+  comInc.dtgrd = period
+##start_time=-0.1, stop_time=5/10, period=0.01
+
+##clear last fault_event
+def clearSimEvents():
+  faultFolder = app.GetFromStudyCase("Simulation Events/Fault.IntEvt")
+  cont = faultFolder.GetContents()
+  for obj in cont:
+    obj.Delete()
+
+###add the fault event/clear the event
+def addShcEvent(obj, sec, faultType):
+  
+  faultFolder = app.GetFromStudyCase("Simulation Events/Fault.IntEvt")
+  event = faultFolder.CreateObject("EvtShc", obj.loc_name)
+  
+  event.p_target = obj
+  event.time = sec
+  event.i_shc = faultType
+
 ##option model,study case
-projName='39 Bus New England System'
-#study_case='Power Flow.IntCase'
+projName='39 Bus New England System1'
 study_case='Simulation Fault Bus 16 Stable.IntCase'
+
+
 project = app.ActivateProject(projName)
 proj = app.GetActiveProject()
 Folder_studycase = app.GetProjectFolder('study')
-app.PrintPlain(Folder_studycase)
+
 ##
 Case = Folder_studycase.GetContents(study_case)
 app.PrintPlain(Case)
 
-
-
 #oCase.Activate()
-Init = app.GetFromStudyCase('ComInc')
-Init.Execute()
-Rms = app.GetFromStudyCase('ComSim')
-Rms.Execute()
+comInc = app.GetFromStudyCase('ComInc')
+comSim = app.GetFromStudyCase('ComSim')
 
-##
-import numpy as np
-import pandas as pd
+###def bus fault
+
+lines = app.GetCalcRelevantObjects("*.ElmLne")
+LLE={}       
+for i in range(len(lines)):
+    LLE[i]=lines[i].loc_name
+LLE=list(LLE.values())
+app.PrintPlain(LLE)
+
+random_element = random.choice(lines)
+line_na=random_element
+app.PrintPlain(line_na)
+loc_fl=None
+for line in lines:
+    #app.PrintPlain(line)
+    if line == line_na:
+        app.PrintPlain(line)
+        loc_fl= line
+        break
+####load scalling
+def loadscalling(loadscalling):
+  
+  load_list = app.GetCalcRelevantObjects('*.ElmLod')
+  scale = loadscalling
+  for oLoad in load_list :
+    oLoad.scale0 = scale
+
+      
+###def bus fault
+#buses = app.GetCalcRelevantObjects('*.ElmTerm')
+#random_element = random.choice(buses)
+#bus_na=random_element
+#app.PrintPlain(bus_na)
+#loc_fl=None
+#for bus in buses:
+    #app.PrintPlain(line)
+    #if bus == bus_na:
+       # app.PrintPlain(bus)
+       # loc_fl= bus
+        #break
+
+###RMS simulation
+CT=[0.18,0.19,0.20,0.21,0.22,0.23]
+
+scale=[0.6,0.65,0.7,0.75,0.80,0.85,0.9,0.95,1,1.05,1.1,1.15,1.2]
+
+time = 0 # event time = 0 sec
+clearTime = 0.2
+faultType = 0 # 3ph shc
+faulClear = 4  #Fault type 4 is fault clearing
+
+clearSimEvents()
+loadscalling(0.8)
+setupSimultation(comInc, comSim,0.1,10,0.01)
+
+addShcEvent(loc_fl, time, faultType)
+addShcEvent(loc_fl, clearTime, faulClear)
+
+def runSimulation(comInc, comSim):
+  app.EchoOff()
+  comInc.Execute()
+  app.EchoOn()
+  comSim.Execute()
+runSimulation(comInc, comSim)
+
 
 def getResults():    
     #get result file
     elmRes = app.GetFromStudyCase('*.ElmRes')    
     app.ResLoadData(elmRes)
-    app.PrintPlain(elmRes)
-  
+    
     #Get number of rows and columns
     NrRow = app.ResGetValueCount(elmRes,0)
     app.PrintPlain(NrRow)
      
     #get objects of interest
-    oSG1 = app.GetCalcRelevantObjects('G 01.ElmSym')[0]
-    oBus1 = app.GetCalcRelevantObjects('Bus 01.ElmTerm')[0]
-    app.PrintPlain(oBus1)
-    oLine4_5 = app.GetCalcRelevantObjects('Line 04 - 05.ElmLne')[0]
-    app.PrintPlain(oLine4_5)
-    lines = app.GetCalcRelevantObjects("*.ElmLne")
-    #app.PrintPlain(lines)
-
-    #Get index of variable of interest
-    ColIndex_time = app.ResGetIndex(elmRes,elmRes,'b:tnow')
-    ColIndex_ut = app.ResGetIndex(elmRes,oSG1,'s:ut')
-    ColIndex_P = app.ResGetIndex(elmRes,oSG1,'s:P1')
-    ColIndex_Q = app.ResGetIndex(elmRes,oSG1,'s:Q1')
-    ColIndex_speed = app.ResGetIndex(elmRes,oSG1,'s:xspeed')
-    ColIndex_u_bus1 = app.ResGetIndex(elmRes,oBus1,'m:u')
-    ColIndex_loading_line_4_5 = app.ResGetIndex(elmRes,oLine4_5,'m:loading')
+    buses = app.GetCalcRelevantObjects('*.ElmTerm')
+    lines = app.GetCalcRelevantObjects('*.ElmLne')
+    SG = app.GetCalcRelevantObjects('*.ElmSym')
+    app.PrintPlain(SG)
     
+    LSG={}       
+    for i in range(len(SG)):
+        LSG[i]=SG[i].loc_name
+    #app.PrintPlain(LSG)
+    LSG=list(LSG.values())
+    
+
+    #Get index of variable of interest #'c:firel'#'c:dfrot''c:fi'#c:phi' c:firel‘c:firot’‘
+
+    ColIndex_time = app.ResGetIndex(elmRes,elmRes,'b:tnow')
+    ColIndex_angle1=app.ResGetIndex(elmRes,SG[0],'c:firel')
+    ColIndex_angle2=app.ResGetIndex(elmRes,SG[1],'c:firel')
+    ColIndex_angle3=app.ResGetIndex(elmRes,SG[2],'c:firel')
+    ColIndex_angle4=app.ResGetIndex(elmRes,SG[3],'c:firel')
+    ColIndex_angle5=app.ResGetIndex(elmRes,SG[4],'c:firel')
+    ColIndex_angle6=app.ResGetIndex(elmRes,SG[5],'c:firel')
+    ColIndex_angle7=app.ResGetIndex(elmRes,SG[6],'c:firel')
+    ColIndex_angle8=app.ResGetIndex(elmRes,SG[7],'c:firel')
+    ColIndex_angle9=app.ResGetIndex(elmRes,SG[8],'c:firel')
+    ColIndex_angle10=app.ResGetIndex(elmRes,SG[9],'c:firel')
+  
+
     #pre-allocate result variables
     result_time = np.zeros((NrRow,))
-    result_ut = np.zeros((NrRow))
-    result_P = np.zeros((NrRow))
-    result_Q = np.zeros((NrRow))    
-    result_speed = np.zeros((NrRow))    
-    result_u_bus1 = np.zeros((NrRow))    
-    result_loading_line_4_5 = np.zeros((NrRow))    
-    
+    result_angle1 = np.zeros((NrRow))
+    result_angle2 = np.zeros((NrRow))
+    result_angle3 = np.zeros((NrRow))
+    result_angle4 = np.zeros((NrRow))
+    result_angle5 = np.zeros((NrRow))
+    result_angle6 = np.zeros((NrRow))
+    result_angle7 = np.zeros((NrRow))
+    result_angle8 = np.zeros((NrRow))
+    result_angle9 = np.zeros((NrRow))
+    result_angle10 = np.zeros((NrRow))
+
     #get results for each time step
-    for i in range(NrRow):    
+    for i in range(NrRow):
         result_time[i] = app.ResGetData(elmRes,i,ColIndex_time)[1]
-        result_ut[i] = app.ResGetData(elmRes,i,ColIndex_ut)[1]
-        result_P[i] = app.ResGetData(elmRes,i,ColIndex_P)[1]
-        result_Q[i] = app.ResGetData(elmRes,i,ColIndex_Q)[1]       
-        result_speed[i] = app.ResGetData(elmRes,i,ColIndex_speed)[1]       
-        result_u_bus1[i] = app.ResGetData(elmRes,i,ColIndex_u_bus1)[1]       
-        result_loading_line_4_5[i] = app.ResGetData(elmRes,i,ColIndex_loading_line_4_5)[1]       
+        result_angle1[i] = app.ResGetData(elmRes,i,ColIndex_angle1)[1]
+        result_angle2[i] = app.ResGetData(elmRes,i,ColIndex_angle2)[1]
+        result_angle3[i] = app.ResGetData(elmRes,i,ColIndex_angle3)[1]
+        result_angle4[i] = app.ResGetData(elmRes,i,ColIndex_angle4)[1]
+        result_angle5[i] = app.ResGetData(elmRes,i,ColIndex_angle5)[1]
+        result_angle6[i] = app.ResGetData(elmRes,i,ColIndex_angle6)[1]
+        result_angle7[i] = app.ResGetData(elmRes,i,ColIndex_angle7)[1]
+        result_angle8[i] = app.ResGetData(elmRes,i,ColIndex_angle8)[1]
+        result_angle9[i] = app.ResGetData(elmRes,i,ColIndex_angle9)[1]
+        result_angle10[i] = app.ResGetData(elmRes,i,ColIndex_angle10)[1]
+
     
     results = pd.DataFrame()
-    results['time'] = result_time
-    results['P'] = result_P
-    results['Q'] = result_Q
-    results['ut'] = result_ut
-    results['speed'] = result_speed
-    results['u_bus1'] = result_u_bus1
-    results['loading_line_4_5'] = result_loading_line_4_5
+    time=pd.DataFrame()
+    time['time'] = result_time
+    results['G01']=result_angle1
+    results['G02']=result_angle2
+    results['G03']=result_angle3
+    results['G04']=result_angle4
+    results['G05']=result_angle5
+    results['G06']=result_angle6
+    results['G07']=result_angle7
+    results['G08']=result_angle8
+    results['G09']=result_angle9
+    results['G10']=result_angle10
+    results['dfrot']=results.apply(lambda x: x.max() - x.min(), axis = 1)
     return results
 
+      
 #query results
 RES = getResults()
-#app.PrintPlain(RES)
+app.PrintPlain(RES)
+
 Data=pd.DataFrame(RES)
 app.PrintPlain(list(Data))
-
-##save data
-import openpyxl as xl
-from openpyxl.chart import LineChart, Reference
-  
-wb = xl.Workbook()
-sheet = wb.active
-sheet.title = 'PowerFlowData'
-
-sheet['A1'] = 'time'
-sheet['B1'] = 'P'
-sheet['C1'] = 'Q'
-sheet['D1'] = 'ut'
-sheet['E1'] = 'speed'
-sheet['F1'] = 'u_bus1'
-sheet['G1'] = 'loading_line_4_5'
-
-i = 0
-
-for bus in buses:
-  i += 1
-  app.PrintPlain("bus %s" % (bus))
-  Name = bus.GetAttribute("loc_name")
-  V = bus.GetAttribute("m:u")
-  Angle = bus.GetAttribute("m:phiu")
-  P = bus.GetAttribute("m:Pflow")
-  Q = bus.GetAttribute("m:Qflow")
-  #print to terminal
-  app.PrintPlain("V at terminal %s is %f p.u." % (bus, V))
-  app.PrintPlain("Angle at terminal %s is %f p.u." % (bus, Angle))
-  app.PrintPlain("Pgen at terminal %s is %f p.u." % (bus, P))
-  app.PrintPlain("Qgen at terminal %s is %f p.u." % (bus, Q))
-  #write to excel file
-  sheet.cell(row = 1+i, column = 1).value = i
-  sheet.cell(row = 1+i, column = 2).value = Name
-  sheet.cell(row = 1+i, column = 3).value = V
-  sheet.cell(row = 1+i, column = 4).value = Angle
-  sheet.cell(row = 1+i, column = 5).value = P
-  sheet.cell(row = 1+i, column = 6).value = Q
-    
-#save the excel file
-wb.save('C:\\Users\\ASUS\\Desktop\\%s.xlsx' % (filename))
-
+gfg_csv_data = Data.to_csv(r'C:\Users\ahd10\Desktop\diffusion-model\mutitemp.csv', index = True)
 
 
