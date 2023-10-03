@@ -1,0 +1,30 @@
+
+import os
+import sys
+sys.path.append(r'D:\PowerFactory2017\Python\3.5')
+import powerfactory as pf
+app=pf.GetApplication()
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+
+app.ClearOutputWindow()
+user=app.GetCurrentUser()
+
+projName='39 Bus New England System1'
+study_case='Simulation Fault Bus 16 Stable.IntCase'
+loads = app.GetCalcRelevantObjects('*.ElmLod')
+
+project = app.ActivateProject(projName)
+proj = app.GetActiveProject()
+Folder_studycase = app.GetProjectFolder('study')
+
+#OutputWindow.GetContent()
+
+
+load_list = app.GetCalcRelevantObjects('*.ElmLod')
+scale = 0.85
+for oLoad in load_list :
+    oLoad.scale0 = scale
