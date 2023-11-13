@@ -1,0 +1,731 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 24 13:57:38 2023
+
+@author: ahd10
+"""
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Oct 16 17:58:31 2023
+
+@author: ahd10
+"""
+import os
+import sys
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+import matplotlib as mp
+
+
+busdata = pd.DataFrame()
+busdata=pd.read_csv(r'D:\data\line1.csv')
+busdata=busdata.drop(['Unnamed: 0.1'], axis=1)
+counts = busdata['name'].value_counts()#1164
+#14422
+
+busdata['loadscalling'] = pd.to_numeric(busdata['loadscalling'], errors='coerce')
+busdata['ct'] =pd.to_numeric( busdata['ct'], errors='coerce')
+busdata['loca'] = pd.to_numeric( busdata['loca'], errors='coerce')
+busdata['loca'] = pd.to_numeric(busdata['loca'], errors='coerce')
+
+busname=busdata['name'].unique()
+cleartime=busdata['ct'].unique()
+loadscalling=busdata['loadscalling'].unique()
+location=busdata['loca'].unique()
+
+busname=list(busname)
+cleartime=list(cleartime)
+loadscalling=list(loadscalling)
+location=list(location)
+
+del busname[1]
+del cleartime[1]
+del loadscalling[1]
+del location[1]
+
+
+print(busdata['name'].tail(5))
+print(busdata['loadscalling'].tail(5))
+print(busdata['ct'].tail(5))
+print(busdata.columns.values.tolist())
+print(busdata['name'].unique())
+
+
+a=busname[14]
+c=cleartime[0]
+s=loadscalling[0]
+l=location[0]
+
+busth=busdata[busdata['name']== a]
+busth=busth[busth['loadscalling']== s]
+busth=busth[busth['ct'] == c]
+
+
+def getbusdata(a,c,s,l):
+    busth=busdata[busdata['name']== a]
+    busth=busth[busth['ct']== c]
+    busth=busth[busth['loadscalling']== s]
+    busth=busth[busth['loca']== l]
+    #busth=busth[busth['time'] >= c]
+    #busth=busth[busth['time'] < c+0.3]
+    datath=busth.head(512)
+    # filename = 'bus.csv'
+    # datath.to_csv(filename, mode='a', header=True )
+    return busth
+
+datath=getbusdata(a,c,s,l)
+
+
+
+# datath=pd.DataFrame()
+# for i in range(39):
+#     a=busname[i]
+#     print(a)
+#     for j in range(6):
+#         c=cleartime[j]
+#         print(c)
+#         for g in range(13):
+#             s=loadscalling[g]
+#             print(s)
+#             l=location[0]
+#             getbusdata(a,c,s,l)
+
+
+
+
+# def getlinedata(a,c,s,l):
+#     lineth=linedata[linedata['name']== a]
+#     lineth=lineth[busth['ct']== c]
+#     lineth=lineth[busth['loadscalling']== s]
+#     lineth=lineth[busth['loca']== l]
+#     return lineth
+#data=getlinedata(a,c,s,l)
+
+import os
+import sys
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import scipy.io 
+
+busdata = pd.DataFrame()
+# linedata = pd.DataFrame()
+
+busdata=pd.read_csv(r'D:\data\bus1.csv')
+#busdata=pd.read_csv(r'D:\data\line1.csv')
+
+#linedata=pd.read_csv(r'D:\data\data\line11.csv')
+
+busdata=busdata.drop(['Unnamed: 0'], axis=1)
+counts = busdata['name'].value_counts()#13258
+# for column in busdata.columns:
+#      busdata[column] = pd.to_numeric(busdata[column], errors='coerce')
+     
+print(busdata['name'].tail(5))
+print(busdata['loadscalling'].tail(5))
+print(busdata['ct'].tail(5))
+print(busdata.columns.values.tolist())
+print(busdata['name'].unique())
+
+busname=busdata['name'].unique()
+cleartime=busdata['ct'].unique()
+loadscalling=busdata['loadscalling'].unique()
+location=busdata['loca'].unique()
+
+busname=list(busname)
+cleartime=list(cleartime)
+loadscalling=list(loadscalling)
+location=list(location)
+
+del busname[1]
+del cleartime[1]
+del loadscalling[1]
+del location[1]
+
+def getbusdata(a,c,s,l):
+    busth=busdata[busdata['name']== a]
+    busth=busth[busth['ct']== c]
+    busth=busth[busth['loadscalling']== s]
+    busth=busth[busth['loca']== l]
+    
+    return busth
+
+
+# a=busname[0]
+# c=cleartime[0]
+# s=loadscalling[1]
+# l=location[0]
+
+# #get the label data
+# datathu=getbusdata(a,c,s,l)
+
+
+
+
+import os
+import sys
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import scipy.io 
+
+busdata = pd.DataFrame()
+#busdata=pd.read_csv(r'D:\data\bus1.csv')
+busdata=pd.read_csv(r'D:\data\line1.csv')
+
+busname=busdata['name'].unique()
+
+busdata=busdata.drop(['Unnamed: 0'], axis=1)
+busname=list(busname)
+busdata1 = busdata.loc[~busdata.duplicated(), :]
+
+name=busdata1[['time', 'name', 'loadscalling', 'ct', 'loca','dfrotx','dfrot', 'stability']]
+
+name.to_csv('D:\data\\name.csv', mode='a', header=False )
+
+     
+# busdata1.to_csv('D:\data\\bus111AB.csv', mode='a', header=False )
+
+name=busdata1[['time', 'name', 'loadscalling', 'ct', 'loca','dfrotx','dfrot', 'stability']]
+PQ=busdata1[['G01P','G01Q', 'G02P', 'G02Q', 'G03P', 'G03Q', 'G04P', 'G04Q', 'G05P', 'G05Q', 'G06P', 'G06Q', 'G07P', 'G07Q', 'G08P', 'G08Q', 'G09P', 'G09Q', 'G10P', 'G010Q']]
+busv=busdata1[['busv1', 'busv2', 'busv3', 'busv4', 'busv5', 'busv6', 'busv7', 'busv8', 'busv9', 'busv10', 'busv11', 'busv12', 'busv13', 'busv14', 'busv15', 'busv16', 'busv17', 'busv18', 'busv19', 'busv20', 'busv21', 'busv22', 'busv23', 'busv24', 'busv25', 'busv26', 'busv27', 'busv28', 'busv29', 'busv30', 'busv31', 'busv32', 'busv33', 'busv34', 'busv35', 'busv36', 'busv37', 'busv38', 'busv39']]
+busva=busdata1[['busva1', 'busva2', 'busva3', 'busva4', 'busva5', 'busva6', 'busva7', 'busva8', 'busva9', 'busva10', 'busva11', 'busva12', 'busva13', 'busva14', 'busva15', 'busva16', 'busva17', 'busva18', 'busva19', 'busva20', 'busva21', 'busva22', 'busva23', 'busva24', 'busva25', 'busva26', 'busva27', 'busva28', 'busva29', 'busva30', 'busva31', 'busva32', 'busva33', 'busva34', 'busva35', 'busva36', 'busva37', 'busva38', 'busva39']]
+busvf=busdata1[['busvf1', 'busvf2', 'busvf3', 'busvf4', 'busvf5', 'busvf6', 'busvf7', 'busvf8', 'busvf9', 'busvf10', 'busvf11', 'busvf12', 'busvf13', 'busvf14', 'busvf15', 'busvf16', 'busvf17', 'busvf18', 'busvf19', 'busvf20', 'busvf21', 'busvf22', 'busvf23', 'busvf24', 'busvf25', 'busvf26', 'busvf27', 'busvf28', 'busvf29', 'busvf30', 'busvf31', 'busvf32', 'busvf33', 'busvf34', 'busvf35', 'busvf36', 'busvf37', 'busvf38', 'busvf39']]
+GS=busdata1[['G01s', 'G02s', 'G03s', 'G04s', 'G05s', 'G06s', 'G07s', 'G08s', 'G09s', 'G10s']]
+
+for column in PQ.columns:
+     PQ[column] = pd.to_numeric(PQ[column], errors='coerce')
+
+for column in GS.columns:
+     GS[column] = pd.to_numeric(GS[column], errors='coerce')
+     
+for column in busv.columns:
+     busv[column] = pd.to_numeric(busv[column], errors='coerce')
+     
+for column in busva.columns:
+     busva[column] = pd.to_numeric(busva[column], errors='coerce')
+     
+for column in busvf.columns:
+     busvf[column] = pd.to_numeric(busvf[column], errors='coerce')
+
+
+name.to_csv('D:\data\\name.csv', mode='a', header=False )
+PQ.to_csv('D:\data\\PQ.csv', mode='a', header=False )
+GS.to_csv('D:\data\\GS.csv', mode='a', header=False)
+busv.to_csv('D:\data\\busv.csv', mode='a', header=False )
+busva.to_csv('D:\data\\busva.csv', mode='a', header=False )
+busvf.to_csv('D:\data\\busvf.csv', mode='a', header=False )
+
+
+
+import os
+import sys
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import scipy.io 
+name=pd.read_csv('D:\data\\name.csv')
+PQ=pd.read_csv('D:\data\\PQ.csv')
+GS=pd.read_csv('D:\data\\GS.csv')
+busv=pd.read_csv('D:\data\\busv.csv')
+busva=pd.read_csv('D:\data\\busva.csv')
+busvf=pd.read_csv('D:\data\\busvf.csv')
+
+name=name.drop(['Unnamed: 0'], axis=1)
+PQ=PQ.drop(['Unnamed: 0'], axis=1)
+GS=GS.drop(['Unnamed: 0'], axis=1)
+busv=busv.drop(['Unnamed: 0'], axis=1)
+busva=busva.drop(['Unnamed: 0'], axis=1)
+busvf=busvf.drop(['Unnamed: 0'], axis=1)
+
+
+
+# # 选择要归一化的列
+# columns_to_normalize = PQ.columns  # 或者指定你想要归一化的特定列
+# PQ1=PQ
+# for column in PQ1.columns:
+#      PQ1[column] = pd.to_numeric(PQ1[column], errors='coerce')
+
+# PQ1 = PQ1.to_numpy()
+
+# scaler = MinMaxScaler()
+# scaler.fit(PQ1)
+
+# # 保存归一化参数
+# scaling_params = {
+#     'min': scaler.data_min_,
+#     'scale': scaler.scale_
+# }
+
+
+# normalized_array = scaler.transform(PQ1)
+# normalized_array=pd.DataFrame(normalized_array)
+
+# scipy.io.savemat('D:\data\\scaling_paramsPQ.mat', scaling_params)
+# normalized_array.to_csv('D:\data\\PQ1.csv', mode='a', header=True )
+
+# 对大数组进行归一化
+def normalize(data):
+    # data=pd.DataFrame()
+    # data=pd.read_csv(filename)
+    
+    for column in data.columns:
+         data[column] = pd.to_numeric(data[column], errors='coerce')
+    data = data.to_numpy()
+    scaler = MinMaxScaler()
+    scaler.fit(data)
+    scaling_params = {
+        'min': scaler.data_min_,
+        'scale': scaler.scale_
+     }
+    normalized_array = scaler.transform(data)
+    normalized_array=pd.DataFrame(normalized_array)
+    return normalized_array,scaling_params
+
+normalized_array,scaling_params=normalize(busvf)
+
+scipy.io.savemat('D:\data\\busvf1.mat', scaling_params)
+normalized_array.to_csv('D:\data\\busvf1.csv', mode='a', header=True )
+
+
+
+
+
+##恢复数据
+# scaler_min = np.array(scaling_params['min'])
+# scaler_scale = np.array(scaling_params['scale'])
+# restored_array = normalized_array * scaler_scale + scaler_min
+
+
+
+import os
+import sys
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import scipy.io 
+from sklearn.preprocessing import MinMaxScaler
+name=pd.read_csv('D:\data\\name.csv')
+PQ=pd.read_csv('D:\data\\PQ1.csv')
+GS=pd.read_csv('D:\data\\GS.csv')
+busv=pd.read_csv('D:\data\\busv.csv')
+busva=pd.read_csv('D:\data\\busva1.csv')
+busvf=pd.read_csv('D:\data\\busvf1.csv')
+
+name=name.drop(['Unnamed: 0'], axis=1)
+PQ=PQ.drop(['Unnamed: 0'], axis=1)
+GS=GS.drop(['Unnamed: 0'], axis=1)
+busv=busv.drop(['Unnamed: 0'], axis=1)
+busva=busva.drop(['Unnamed: 0'], axis=1)
+busvf=busvf.drop(['Unnamed: 0'], axis=1)
+
+name=name.drop([513])
+PQ=PQ.drop([513])
+GS=GS.drop([513])
+busv=busv.drop([513])
+busva=busva.drop([513])
+busvf=busvf.drop([513])
+
+name1=name[['loadscalling','loca','ct']]
+name2=name[['time','name','stability']]
+
+for column in name1.columns:
+   name1[column] = pd.to_numeric(name1[column], errors='coerce')
+
+
+merged_df = pd.concat([name1,name2, PQ,GS,busv,busva,busvf], axis=1)
+
+busdata=merged_df
+
+busname=merged_df['name'].unique()
+cleartime=merged_df['ct'].unique()
+loadscalling=merged_df['loadscalling'].unique()
+location=merged_df['loca'].unique()
+
+busname=list(busname)
+cleartime=list(cleartime)
+loadscalling=list(loadscalling)
+location=list(location)
+
+del busname[40]
+del cleartime[6]
+del loadscalling[13]
+del location[2]
+
+# pd.to_numeric(name[column], errors='coerce')
+    
+    
+# #数据存档
+# datath=datathu
+
+# merged_data_dict = {
+#     'time_series_data': [],
+#     'labels': []
+# }
+
+def toMatrix(datath):
+    data=datath
+    datath=datath.drop(['time', 'name','loadscalling','loca','ct'],axis=1)
+    
+    # for column in datath.columns:
+    #      datath[column] = pd.to_numeric(datath[column], errors='coerce')
+    # 提取数据列
+    data_columns = datath.columns
+    y = datath['stability']
+    X = datath.drop(columns=['stability'])  
+    label={}
+    is_all_zero = (y== 0).all()
+    if is_all_zero:
+        label=[0]
+    else:
+        label=[1]
+    # 转换数据为NumPy数组
+    X = X.to_numpy()
+    image_data =X
+    return image_data,label
+
+def newmatrix(matrix1,matrix2):
+    matrix1.append(matrix2)
+    return matrix1
+
+matrix_list = []
+label=[]
+
+location1=['50.0']
+location2=[5.0, 25.0,50.0, 75.0, 95.0,]
+
+def getbusdata(a,c,s,l):
+    busth=busdata[busdata['name']== a]
+    busth=busth[busth['ct']== c]
+    busth=busth[busth['loadscalling']== s]
+    busth=busth[busth['loca']== l]
+    return busth
+# a=busname[14]
+# c=cleartime[0]
+# s=loadscalling[0]
+# l=location[0]
+# datathu=getbusdata(a,c,s,l)
+# datath=datathu
+# t2,t1=toMatrix(datath)
+# matrix_list=newmatrix(matrix_list, t2)
+# label=newmatrix(label, t1)
+
+linename=['Line 26 - 28', 'Line 17 - 18', 'Line 02 - 25', 'Line 04 - 14', 
+            'Line 26 - 27', 'Line 01 - 39', 'Line 05 - 08', 'Line 13 - 14', 
+            'Line 09 - 39', 'Line 15 - 16', 'Line 08 - 09', 'Line 06 - 07', 
+            'Line 01 - 02', 'Line 10 - 13', 'Line 05 - 06', 'Line 17 - 27', 
+            'Line 14 - 15', 'Line 16 - 21', 'Line 10 - 11', 'Line 26 - 29',
+            'Line 21 - 22', 'Line 16 - 19', 'Line 16 - 24', 'Line 23 - 24',
+            'Line 16 - 17', 'Line 22 - 23', 'Line 28 - 29', 'Line 04 - 05', 
+            'Line 07 - 08', 'Line 25 - 26', 'Line 03 - 18', 'Line 02 - 03', 
+            'Line 03 - 04', 'Line 06 - 11']
+
+for i in range(39):
+    a = linename[i]
+    print(a)
+    for j in range(6):
+        c = cleartime[j]
+        print(c)
+        for g in range(13):  # 13
+            s = loadscalling[g]
+            print(s)
+            for l in range(5):
+                l = location[l]
+                print(l)
+                datathu = getbusdata(a, c, s, l)
+                datath = datathu
+                t2, t1 = toMatrix(datath)
+                matrix_list = newmatrix(matrix_list, t2)
+                label = newmatrix(label, t1)
+
+data_dict = {
+    'time_series_data':matrix_list,
+    'labels': label
+}
+
+scipy.io.savemat('D:\data\\line.mat', data_dict)
+
+
+# busname1=['Bus 01', 'Bus 02', 'Bus 03', 'Bus 04', 'Bus 05', 'Bus 06', 
+#           'Bus 07', 'Bus 08', 'Bus 09', 'Bus 10', 'Bus 11', 'Bus 12', 
+#           'Bus 13', 'Bus 14', 'Bus 15', 'Bus 16', 'Bus 17', 'Bus 18',
+#           'Bus 19', 'Bus 20', 'Bus 21', 'Bus 22', 'Bus 23', 'Bus 24', 
+#           'Bus 25', 'Bus 26', 'Bus 27', 'Bus 28', 'Bus 29', 'Bus 30',
+#           'Bus 31', 'Bus 32', 'Bus 33', 'Bus 34', 'Bus 35', 'Bus 36', 
+#           'Bus 37', 'Bus 38', 'Bus 39']
+
+# def Merge(dict1, dict2):
+#     merged_data_dict['time_series_data'].extend(dict2['time_series_data'])
+#     merged_data_dict['labels'].extend(dict2['labels'])
+#     return 
+
+# def label():
+#     y = datathu['stability']
+#     is_all_zero = (y== 0).all()
+#     if is_all_zero:
+#         sta=0
+#     else:
+#         sta=1
+#     return sta
+
+# imag=toMatrix(datath)
+# label=label()
+
+# 创建灰度图像
+# plt.imshow(imag, cmap='gray')
+# plt.axis('off')  
+# plt.show()
+
+# def todata(imag):
+#     image_data=imag
+#     data_columns = image_data.columns
+#     scaler = StandardScaler()
+#     for column in data_columns:
+#         if image_data[column].dtype != 'object':  # 跳过非数值列
+#             image_data[column] = scaler.inverse_transform(image_data[[column]])
+    
+#     return image_data
+
+# rpdata=todata(imag)
+
+
+
+
+
+
+# import pandas as pd
+# from sklearn.decomposition import PCA
+
+# # 1. 读取CSV文件
+# data = datath  # 替换 'your_data.csv' 为您的CSV文件路径
+
+# # 2. 选择要进行PCA的列（特征）
+# # 例如，假设您的CSV文件包含多列数据，您可以选择需要进行PCA的列。
+# # 在示例中，我们选择前5列数据进行PCA。
+# selected_columns = data.iloc[:, 19:165]  # 选择第1到第5列
+
+# # 3. 数据预处理（可选）
+# # 如果需要，您可以进行数据标准化，以确保不同列的值具有相同的重要性。
+# # 通常使用均值和标准差进行标准化。
+# from sklearn.preprocessing import StandardScaler
+# scaler = StandardScaler()
+# selected_columns = scaler.fit_transform(selected_columns)
+
+# # 4. 创建PCA模型并拟合数据
+# n_components = 2  # 设置要降维到的维度
+# pca = PCA(n_components=n_components)
+# pca_result = pca.fit_transform(selected_columns)
+
+# # 5. 将PCA结果添加到原始数据框
+# pca_columns = [f'PC{i + 1}' for i in range(n_components)]
+# pca_data = pd.DataFrame(data=pca_result, columns=pca_columns)
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Nov  7 16:41:32 2023
+
+@author: ahd10
+"""
+import os
+import sys
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import scipy.io 
+
+# mat_file=r'D:\data\bus1.mat'
+# data = scipy.io.loadmat(mat_file)
+
+# mat_file1=r'D:\data\line.mat'
+# data1= scipy.io.loadmat(mat_file1)
+
+
+mat_file2=r'D:\data\line2.mat'
+data2= scipy.io.loadmat(mat_file2)
+
+# names =data1.keys()
+tpn=data2['labels']
+# for name in names:
+# 	print(name)
+
+# posivate=[]
+# negative=[]
+
+def separate(data):
+    negative=[]
+    posivate=[]
+    # tp=[]
+    # tn=[]
+    matrix=data['time_series_data']
+    label=data['labels']
+    for i in range(len(label)):
+        if label[i] == 1:
+            #negative.append(matrix[:,i])
+            negative.append(matrix[i])
+            # tn.append(label[i])
+
+        else:
+            #posivate.append(matrix[:,i])
+            posivate.append(matrix[i])
+            #tp.append(label[i])
+    return posivate,negative
+#,tp,tn
+# def add(data,data1):
+#      data.append(data1)
+#      return data
+ 
+    
+posivate1,negative1=separate(data2)
+        
+# add(posivate,posivate1)
+# add(negative,negative1)
+
+posivate1 = {
+    'time_series_data':posivate1
+}
+
+negative1 = {
+    'time_series_data':negative1
+}
+
+
+scipy.io.savemat('D:\data\posivate3.mat', posivate1)
+scipy.io.savemat('D:\data\\negativ3.mat', negative1)
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov  9 20:30:50 2023
+
+@author: ahd10
+"""
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+import numpy as np
+import os
+import sys
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import scipy.io 
+
+mat_file=r'D:\data\negativ1.mat'
+data = scipy.io.loadmat(mat_file)
+
+mat_file1=r'D:\data\negativ2.mat'
+data1= scipy.io.loadmat(mat_file1)
+
+mat_file2=r'D:\data\negativ3.mat'
+data2= scipy.io.loadmat(mat_file2)
+
+a=data['time_series_data']
+a=a[0]
+print(a)
+
+b=data1['time_series_data']
+c=data2['time_series_data']
+
+d = np.vstack((b,c))
+
+import numpy as np
+
+# 指定要随机提取的矩阵数量（n）
+n = 350
+
+# 随机选择n个矩阵的索引
+random_indices = np.random.choice(d.shape[0], n, replace=False)
+
+# 提取随机选择的矩阵
+random_matricesN = d[random_indices]
+
+
+
+# mat_file=r'D:\data\posivate1.mat'
+# data = scipy.io.loadmat(mat_file)
+
+mat_file1=r'D:\data\posivate2.mat'
+data1= scipy.io.loadmat(mat_file1)
+
+mat_file2=r'D:\data\posivate3.mat'
+data2= scipy.io.loadmat(mat_file2)
+
+
+# a=data['time_series_data']
+
+b=data1['time_series_data']
+c=data2['time_series_data']
+
+d = np.vstack((b,c))
+
+import numpy as np
+
+# 指定要随机提取的矩阵数量（n）
+n = 4000
+
+# 随机选择n个矩阵的索引
+random_indices = np.random.choice(d.shape[0], n, replace=False)
+
+# 提取随机选择的矩阵
+random_matricesP = d[random_indices]
+
+
+posivate1 = {
+    'time_series_data':random_matricesP
+}
+
+negative1 = {
+    'time_series_data':random_matricesN
+}
+
+
+scipy.io.savemat('D:\data\\random_matricesP.mat', posivate1)
+scipy.io.savemat('D:\data\\random_matricesN.mat', negative1)
+
+
+# mat_file=r'D:\data\merged_filenegative.mat'
+# dataN= scipy.io.loadmat(mat_file)
+
+# mat_file1=r'D:\data\merged_fileposivate.mat'
+# dataP= scipy.io.loadmat(mat_file1)
+
+# negative=dataN['time_series_data']
+
+# posivate=dataP['time_series_data']
+# # ['time_series_data']
+
+
+
+
+
+
+
+
+
+
+
+
