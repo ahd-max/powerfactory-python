@@ -1,0 +1,427 @@
+import os
+import sys
+sys.path.append(r'D:\PowerFactory2017\Python\3.6')##powerfactory python file
+import powerfactory as pf
+app=pf.GetApplication()
+import random
+import numpy as np
+import pandas as pd
+from pandas import DataFrame
+import math
+
+app.ClearOutputWindow()
+user=app.GetCurrentUser()
+
+###set the basic simulation##
+def setupSimultation(comInc, comSim, start_time, stop_time, period):
+  comInc.iopt_sim = "rms"#time domin simulation
+  comInc.iopt_show = 0
+  comInc.iopt_adapt = 0
+  comInc.start = start_time
+  comSim.tstop = stop_time
+  comInc.dtgrd = period
+##start_time=-0.1, stop_time=5s or 10s, period=0.01
+
+##clear last fault_event
+def clearSimEvents():
+  faultFolder = app.GetFromStudyCase("Simulation Events/Fault.IntEvt")
+  cont = faultFolder.GetContents()
+  for obj in cont:
+    obj.Delete()
+
+###add the fault event/clear the event
+def addShcEvent(obj, sec, faultType):
+  faultFolder = app.GetFromStudyCase("Simulation Events/Fault.IntEvt")
+  event = faultFolder.CreateObject("EvtShc", obj.loc_name)
+  event.p_target = obj
+  event.time = sec       #fault start time
+  event.i_shc = faultType#fault type (type0: 3 phase short fulat; type 4: clear the event )
+
+
+####load scalling 
+def loadscalling(loadscalling):
+  load_list = app.GetCalcRelevantObjects('*.ElmLod')
+  scale = loadscalling
+  for oLoad in load_list :
+    oLoad.scale0 = scale  #set the loadscalling factor for all load
+
+## activate the simulation
+def runSimulation(comInc, comSim):  ##
+  app.EchoOff()
+  comInc.Execute()
+  app.EchoOn()
+  comSim.Execute()
+
+def getResults(loc_fl,sec,loca):      
+    #get result file
+    elmRes = app.GetFromStudyCase('*.ElmRes')    
+    app.ResLoadData(elmRes)
+    
+    #Get number of rows and columns
+    NrRow = app.ResGetValueCount(elmRes,0)
+    app.PrintPlain(NrRow)
+     
+    #get objects of interest
+    buses = app.GetCalcRelevantObjects('*.ElmTerm')
+    lines = app.GetCalcRelevantObjects('*.ElmLne')
+    SG = app.GetCalcRelevantObjects('*.ElmSym')
+    load_list = app.GetCalcRelevantObjects('*.ElmLod')
+    
+
+    ColIndex_time = app.ResGetIndex(elmRes,elmRes,'b:tnow')
+  
+####################### SG data ##########################
+    
+    ColIndex_time = app.ResGetIndex(elmRes,elmRes,'b:tnow') ## time
+    ColIndex_anglediff=app.ResGetIndex(elmRes,SG[0],'c:dfrotx')## get the max rotor angle difference
+
+    c= {}
+    for oLoad in load_list :
+        c=oLoad.scale0
+
+    result_time = np.zeros((NrRow,))
+    result_anglediff = np.zeros((NrRow))
+    result_name = np.zeros((NrRow),dtype=object)
+    result_scalle = np.zeros((NrRow))
+    result_ct = np.zeros((NrRow))
+    result_loca = np.zeros((NrRow))
+    
+    for i in range(NrRow):
+      result_time[i] = app.ResGetData(elmRes,i,ColIndex_time)[1]
+      result_name[i] = loc_fl.loc_name
+      result_scalle[i]= np.around(c,4)
+      result_ct[i]=sec
+      result_loca[i]=loca
+      result_anglediff[i] = app.ResGetData(elmRes,i,ColIndex_anglediff)[1]
+      
+    time=pd.DataFrame()
+    time['time'] = result_time
+    time['name'] = result_name
+    time['loadscalling'] = result_scalle
+    time['ct'] = result_ct
+    time['loca'] = result_loca
+    time['dfrotx']=result_anglediff
+    
+########## SG data rotor angle ######### 
+    ColIndex_u_sg = []
+    result_sg = {}
+    for i, g in enumerate(SG):
+       a=g.loc_name
+       ColIndex_u_sg.append(app.ResGetIndex(elmRes, g, 'c:firot'))
+       result_sg[a] = np.zeros(NrRow)
+
+    for i in range(NrRow):
+      for g, ColIndex in zip(SG, ColIndex_u_sg):
+        a=g.loc_name
+        result_sg[a][i] = app.ResGetData(elmRes, i, ColIndex)[1]
+
+########## SG data real power ######### 
+    ColIndex_u_sgp = []
+    result_sgp = {}
+    for i, g in enumerate(SG):
+       a=g.loc_name
+       ColIndex_u_sg.append(app.ResGetIndex(elmRes, g, 's:P1'))
+       result_sgp[a] = np.zeros(NrRow)
+
+    for i in range(NrRow):
+      for g, ColIndex in zip(SG, ColIndex_u_sg):
+        a=g.loc_name
+        result_sgp[a][i] = app.ResGetData(elmRes, i, ColIndex)[1]
+########## SG data reactive power #########
+    ColIndex_u_sgq = []
+    result_sgq = {}
+    for i, g in enumerate(SG):
+       a=g.loc_name
+       ColIndex_u_sg.append(app.ResGetIndex(elmRes, g, 's:Q1'))
+       result_sgq[a] = np.zeros(NrRow)
+
+    for i in range(NrRow):
+      for g, ColIndex in zip(SG, ColIndex_u_sg):
+        a=g.loc_name
+        result_sgq[a][i] = app.ResGetData(elmRes, i, ColIndex)[1]
+    
+
+################## bus data ############################ 
+    loc_fl=None
+    for bus in buses[:]:
+      a=bus.loc_name
+      if 'B' not in a:
+         buses.remove(bus)
+         loc_fl=buses
+    buses=loc_fl
+    loc_fl=None
+    for bus in buses[:]:
+      a=bus.loc_name
+      if  int(a.strip('B')) > 118:
+          buses.remove(bus)
+          loc_fl=buses
+    buses=loc_fl
+
+########### get bus voltage magnitude####
+    ColIndex_u_bus = []
+    result_busv = {}
+    for i, bus in enumerate(buses):
+       a=bus.loc_name
+       ColIndex_u_bus.append(app.ResGetIndex(elmRes, bus, 'm:u1'))
+       result_busv[a] = np.zeros(NrRow)
+
+    for i in range(NrRow):
+      for bus, ColIndex in zip(buses, ColIndex_u_bus):
+        a=bus.loc_name
+        result_busv[a][i] = app.ResGetData(elmRes, i, ColIndex)[1]
+
+########### get bus voltage angle####
+    ColIndex_u_bus = []
+    result_busva = {}
+    for i, bus in enumerate(buses):
+       a=bus.loc_name
+       ColIndex_u_bus.append(app.ResGetIndex(elmRes, bus, 'm:phiu'))
+       result_busva[a] = np.zeros(NrRow)
+
+    for i in range(NrRow):
+      for bus, ColIndex in zip(buses, ColIndex_u_bus):
+        a=bus.loc_name
+        result_busva[a][i] = app.ResGetData(elmRes, i, ColIndex)[1]
+        
+########### get bus voltage freq####
+    ColIndex_u_bus = []
+    result_busvf = {}
+    for i, bus in enumerate(buses):
+       a=bus.loc_name
+       ColIndex_u_bus.append(app.ResGetIndex(elmRes, bus, 'm:fehz'))
+       result_busvf[a] = np.zeros(NrRow)
+
+    for i in range(NrRow):
+      for bus, ColIndex in zip(buses, ColIndex_u_bus):
+        a=bus.loc_name
+        result_busvf[a][i] = app.ResGetData(elmRes, i, ColIndex)[1]
+
+
+######################### data processing #############################
+    sga=pd.DataFrame(result_sg)
+    sgp=pd.DataFrame(result_sgp)
+    sgq=pd.DataFrame(result_sgq)
+    
+    new_columns = {col: 'p' + col for col in sgp.columns}
+    sgp = sgp.rename(columns=new_columns)
+    
+    new_columns = {col: 'q' + col for col in sgq.columns}
+    sgq = sgq.rename(columns=new_columns)
+    
+    
+    busv = pd.DataFrame(result_busv)
+    busva=pd.DataFrame(result_busva)
+    busvf=pd.DataFrame(result_busvf)
+    
+    
+    new_columns = {col: 'a' + col for col in busva.columns}
+    busva = busva.rename(columns=new_columns)
+    
+    new_columns = {col: 'f' + col for col in busvf.columns}
+    busvf = busvf.rename(columns=new_columns)
+
+
+
+    sga['dfrot']=sga.apply(lambda x: x.max() - x.min(), axis = 1)
+    sga['stability']=sga['dfrot'].apply(lambda x: 1 if x>180 else 0 )
+
+    results=pd.concat([time,sga],axis=1,ignore_index=False)
+    results=pd.concat([results,sgp],axis=1,ignore_index=False)
+    results=pd.concat([results,sgq],axis=1,ignore_index=False)
+    
+    results=pd.concat([results,busv],axis=1,ignore_index=False)
+    results=pd.concat([results,busva],axis=1,ignore_index=False)
+    results=pd.concat([results,busvf],axis=1,ignore_index=False)
+    
+    return results
+
+###################################################################################################
+def runbus(obj):
+  buses = app.GetCalcRelevantObjects('*.ElmTerm')
+  loc_fl=None
+  for bus in buses[:]:
+      a=bus.loc_name
+      if 'B' not in a:
+         buses.remove(bus)
+         loc_fl=buses
+  buses=loc_fl
+  loc_fl=None
+  for bus in buses[:]:
+      a=bus.loc_name
+      if  int(a.strip('B')) > 118:
+          buses.remove(bus)
+          loc_fl=buses
+  buses=loc_fl
+
+  ##set the clear time, loadscalling
+  CT=[0.18,0.19,0.20,0.21,0.22,0.23]
+  scale=[1.25,1.3,1.35,1.4]
+  random_element = obj
+  element=random_element.loc_name
+  ##choose the object
+  for bus in buses:
+    if bus == random_element:
+      loc_fl= bus
+      ##clear time
+      for sec in CT:
+        time = 0
+        clearTime = sec
+        faultType = 0
+        faulClear = 4
+        for loadscall in scale:
+          loadscalling(loadscall)
+          setupSimultation(comInc, comSim,0.1,5,0.01)
+          addShcEvent(loc_fl, time, faultType)
+          addShcEvent(loc_fl, clearTime, faulClear)
+          runSimulation(comInc, comSim)
+          location=50
+                
+          RES = getResults(obj,sec,location)
+          app.PrintPlain(RES)
+          Data=pd.DataFrame(RES)
+          app.PrintPlain(list(Data))
+          #filename = 'bus1.csv'
+          #Data.to_csv(filename, mode='a', header=True )
+          Data.to_csv(r'D:\data1\118busdata1.csv',mode='a', index = True) #Save the index labels to csv files
+          clearSimEvents()
+
+def runbus1(obj):
+  buses = app.GetCalcRelevantObjects('*.ElmTerm')
+  loc_fl=None
+  for bus in buses[:]:
+      a=bus.loc_name
+      if 'B' not in a:
+         buses.remove(bus)
+         loc_fl=buses
+  buses=loc_fl
+  loc_fl=None
+  for bus in buses[:]:
+      a=bus.loc_name
+      if  int(a.strip('B')) > 118:
+          buses.remove(bus)
+          loc_fl=buses
+  buses=loc_fl
+
+  ##set the clear time, loadscalling
+  CT=[0.18,0.19,0.20,0.21,0.22,0.23]
+  scale=[0.80,0.85,0.9,0.95,1,1.05,1.1,1.15,1.2]
+  random_element = obj
+  element=random_element.loc_name
+  ##choose the object
+  for bus in buses:
+    if bus == random_element:
+      loc_fl= bus
+      ##clear time
+      for sec in CT:
+        time = 0
+        clearTime = sec
+        faultType = 0
+        faulClear = 4
+        for loadscall in scale:
+          loadscalling(loadscall)
+          setupSimultation(comInc, comSim,0.1,5,0.01)
+          addShcEvent(loc_fl, time, faultType)
+          addShcEvent(loc_fl, clearTime, faulClear)
+          runSimulation(comInc, comSim)
+          location=50
+                
+          RES = getResults(obj,sec,location)
+          app.PrintPlain(RES)
+          Data=pd.DataFrame(RES)
+          app.PrintPlain(list(Data))
+          #filename = 'bus1.csv'
+          #Data.to_csv(filename, mode='a', header=True )
+          Data.to_csv(r'D:\data1\118busdata2.csv',mode='a', index = True) #Save the index labels to csv files
+          clearSimEvents()
+
+def runbus2(obj):
+  buses = app.GetCalcRelevantObjects('*.ElmTerm')
+  loc_fl=None
+  for bus in buses[:]:
+      a=bus.loc_name
+      if 'B' not in a:
+         buses.remove(bus)
+         loc_fl=buses
+  buses=loc_fl
+  loc_fl=None
+  for bus in buses[:]:
+      a=bus.loc_name
+      if  int(a.strip('B')) > 118:
+          buses.remove(bus)
+          loc_fl=buses
+  buses=loc_fl
+
+  ##set the clear time, loadscalling
+  CT=[0.18,0.19,0.20,0.21,0.22,0.23]
+  scale=[0.80,0.85,0.9,0.95,1,1.05,1.1,1.15,1.2]
+  random_element = obj
+  element=random_element.loc_name
+  ##choose the object
+  for bus in buses:
+    if bus == random_element:
+      loc_fl= bus
+      ##clear time
+      for sec in CT:
+        time = 0
+        clearTime = sec
+        faultType = 0
+        faulClear = 4
+        for loadscall in scale:
+          loadscalling(loadscall)
+          setupSimultation(comInc, comSim,0.1,5,0.01)
+          addShcEvent(loc_fl, time, faultType)
+          addShcEvent(loc_fl, clearTime, faulClear)
+          runSimulation(comInc, comSim)
+          location=50
+                
+          RES = getResults(obj,sec,location)
+          app.PrintPlain(RES)
+          Data=pd.DataFrame(RES)
+          app.PrintPlain(list(Data))
+          #filename = 'bus1.csv'
+          #Data.to_csv(filename, mode='a', header=True )
+          Data.to_csv(r'D:\data1\118busdata3.csv',mode='a', index = True) #Save the index labels to csv files
+          clearSimEvents()
+          
+############################### Run simlation #############################################
+##option model,study case
+projName='IEEE 118bus_modified'
+study_case='IEEE 118 bus Test Case.IntCase'
+
+
+project = app.ActivateProject(projName)
+proj = app.GetActiveProject()
+Folder_studycase = app.GetProjectFolder('study')
+
+##
+Case = Folder_studycase.GetContents(study_case)
+
+comInc = app.GetFromStudyCase('ComInc')
+comSim = app.GetFromStudyCase('ComSim')
+
+buses = app.GetCalcRelevantObjects('*.ElmTerm')
+loc_fl=None
+for bus in buses[:]:
+  a=bus.loc_name
+  if 'B' not in a:
+    buses.remove(bus)
+    loc_fl=buses
+    buses=loc_fl
+    
+loc_fl=None
+for bus in buses[:]:
+  a=bus.loc_name
+  if  int(a.strip('B')) > 118:
+    buses.remove(bus)
+    loc_fl=buses
+buses=loc_fl
+
+for i in range(118):
+    runbus(buses[i])
+
+#for i in range(46,100,1):
+#    runbus1(buses[i])
+
+#for i in range(101,118,1):
+#    runbus2(buses[i])
+
